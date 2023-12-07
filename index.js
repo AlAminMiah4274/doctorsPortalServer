@@ -145,11 +145,25 @@ async function run() {
                     }
                 }
             ]).toArray();
+            res.send(options);
         });
 
         // to send booking data to the databse 
         app.post("/bookings", async (req, res) => {
             const bookingData = req.body;
+            
+            const query = {
+                appointmentDate: bookingData.appointmentDate,
+                patientEmail: bookingData.patientEmail,
+                treatmentName: bookingData.treatmentName
+            };
+
+            const alreadyBooked = await bookingsCollection.find(query).toArray();
+            if(alreadyBooked.length){
+                const message = `You have a booking on ${bookingData.appointmentDate}`;
+                return res.send({acknowledged: false, message});
+            };
+
             const result = await bookingsCollection.insertOne(bookingData)
             res.send(result);
         });

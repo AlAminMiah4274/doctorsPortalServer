@@ -1,8 +1,8 @@
 const express = require("express");
+const cors = require("cors");
 const app = express();
 const port = process.env.PORT || 5000;
 const { MongoClient, ServerApiVersion } = require('mongodb');
-const cors = require("cors");
 require("dotenv").config(); // to connect to the .env file 
 
 // middleware 
@@ -28,11 +28,41 @@ const client = new MongoClient(uri, {
 async function run() {
     try {
         const appointmentOptionsCollection = client.db("doctorsPortal").collection("appointmentOptions");
+        const bookingsCollection = client.db("doctorsPortal").collection("bookings");
 
+        // to get appointment option data from the database 
         app.get("/appointmentOptions", async (req, res) => {
-            const query = {};
-            const options = await appointmentOptionsCollection.find(query).toArray();
+            const optionsQuery = {};
+            const options = await appointmentOptionsCollection.find(optionsQuery).toArray();
+
+            // to find which options already has been booked 
+            const date = req.query.date;
+            const bookingsQuery = {appointmentDate: date};
+            const alreadyBookedOptions = await bookingsCollection.find(bookingsQuery).toArray();
+            
+            // to show only remaining slots in the client side 
+            options.forEach(option => {
+                const bookedOption = alreadyBookedOptions.filter(alreadyBookedOption => alreadyBookedOption.treatmentName === option.name);
+                const bookedSlots = bookedOption.map(booked => booked.slot);
+                const remainingSlots = option.slots.filter(slot => !bookedSlots.includes(slot));
+                option.slots = remainingSlots;
+            });
+
             res.send(options);
+        });
+
+        // to send booking data to the databse 
+        app.post("/bookings", async(req, res) => {
+            const bookingData = req.body;
+            const result = await bookingsCollection.insertOne(bookingData)
+            res.send(result);
+        });
+
+        // to get bookings from the database 
+        app.get("/bookings", async(req, res) => {
+            const query = {};
+            const booknings = await bookingsCollection.find(query).toArray();
+            res.send(booknings);
         });
 
     } finally {

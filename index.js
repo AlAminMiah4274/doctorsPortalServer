@@ -35,12 +35,12 @@ async function run() {
             const optionsQuery = {};
             const options = await appointmentOptionsCollection.find(optionsQuery).toArray();
 
-            // to find which options already has been booked 
+            // to find bookings data from the database 
             const date = req.query.date;
-            const bookingsQuery = {appointmentDate: date};
+            const bookingsQuery = { appointmentDate: date };
             const alreadyBookedOptions = await bookingsCollection.find(bookingsQuery).toArray();
-            
-            // to show only remaining slots in the client side 
+
+            // to show only available slots info in the client side 
             options.forEach(option => {
                 const bookedOption = alreadyBookedOptions.filter(alreadyBookedOption => alreadyBookedOption.treatmentName === option.name);
                 const bookedSlots = bookedOption.map(booked => booked.slot);
@@ -51,15 +51,111 @@ async function run() {
             res.send(options);
         });
 
+        // // mongodb aggregation pipeline
+        // app.get("/v2/appointmentOptions", async (req, res) => {
+        //     const date = req.query.date;
+        //     const options = await appointmentOptionsCollection.aggregate([
+
+        //         // to get booked option
+        //         {
+        //             $lookup: {
+        //                 from: "bookings",
+        //                 localField: "name",
+        //                 foreignField: "treatmentName",
+        //                 pipeline: [
+        //                     {
+        //                         $match: {
+        //                             $expr: {
+        //                                 $eq: ["$appointmentDate", date]
+        //                             }
+        //                         }
+        //                     }
+        //                 ],
+        //                 as: "booked"
+        //             }
+        //         },
+
+        //         // to get booked slots 
+        //         {
+        //             $project: {
+        //                 name: 1,
+        //                 slots: 1,
+        //                 booked: {
+        //                     $map: {
+        //                         input: '$booked',
+        //                         as: 'book',
+        //                         in: '$$book.slot'
+        //                     }
+        //                 }
+        //             }
+        //         },
+
+        //         // to make difference between booked slots and booked option 
+        //         {
+        //             $project: {
+        //                 name: 1,
+        //                 slots: {
+        //                     $setDifference: ['$slots', '$booked']
+        //                 }
+        //             }
+        //         }
+        //     ]).toArray();
+        //     res.send(options);
+        // });
+
+        app.get("/v2/appointmentOptions", async(req, res) => {
+            const date = req.query.date;
+            const options = await appointmentOptionsCollection.aggregate([
+                {
+                    $lookup: {
+                        from: "bookings",
+                        localField: "name",
+                        foreignField: "treatmentName",
+                        pipeline: [
+                            {
+                                $match: {
+                                    $expr: {
+                                        $eq: ["$appointmentDate", date]
+                                    }
+                                }
+                            }
+                        ],
+                        as: "booked"
+                    }
+                },
+                {
+                    $project: {
+                        name: 1,
+                        slots: 1,
+                        booked: {
+                            $map: {
+                                input: "$booked",
+                                as: "book",
+                                in: "$$book.slot"
+                            }
+                        }
+                    }
+                },
+                {
+                    $project: {
+                        name: 1,
+                        slots: {
+                            $setDifference: ["$slots", "$booked"]
+                        }
+                    }
+                }
+            ]).toArray();
+        });
+
         // to send booking data to the databse 
-        app.post("/bookings", async(req, res) => {
+        app.post("/bookings", async (req, res) => {
             const bookingData = req.body;
             const result = await bookingsCollection.insertOne(bookingData)
             res.send(result);
         });
 
         // to get bookings from the database 
-        app.get("/bookings", async(req, res) => {
+        app.get("/bookings", async (req, res) => {
             const query = {};
             const booknings = await bookingsCollection.find(query).toArray();
             res.send(booknings);

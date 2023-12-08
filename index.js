@@ -29,6 +29,7 @@ async function run() {
     try {
         const appointmentOptionsCollection = client.db("doctorsPortal").collection("appointmentOptions");
         const bookingsCollection = client.db("doctorsPortal").collection("bookings");
+        const usersCollection = client.db("doctorsPortal").collection("users");
 
         // to get appointment option data from the database 
         app.get("/appointmentOptions", async (req, res) => {
@@ -170,12 +171,19 @@ async function run() {
             res.send(bookings);
         });
 
-        // to get bookings from the database 
+        // to get bookings from the database using specific email id
         app.get("/bookings", async (req, res) => {
             const userEmail = req.query.email;
             const query = {patientEmail: userEmail};
             const booknings = await bookingsCollection.find(query).toArray();
             res.send(booknings);
+        });
+
+        // to save new user info in the database 
+        app.post("/users", async (req, res) => {
+            const userInfo = req.body;
+            const user = await usersCollection.insertOne(userInfo);
+            res.send(user);
         });
 
     } finally {

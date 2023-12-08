@@ -149,30 +149,31 @@ async function run() {
         });
 
         // to send booking data to the databse 
-        app.post("/bookings", async (req, res) => {
-            const bookingData = req.body;
+        app.post("/bookings", async(req, res) => {
+            const bookingInfo = req.body;
 
-            // to prevent the user to take many appointment of a treatment in a day
+            // to prevent the user to take many appointments of a same category treatment in a day
             const query = {
-                appointmentDate: bookingData.appointmentDate,
-                patientEmail: bookingData.patientEmail,
-                treatmentName: bookingData.treatmentName
+                appointmentDate: bookingInfo.appointmentDate,
+                treatmentName: bookingInfo.treatmentName,
+                patientEmail: bookingInfo.patientEmail
             };
 
             const alreadyBooked = await bookingsCollection.find(query).toArray();
 
             if(alreadyBooked.length){
-                const message = `You have a booking on ${bookingData.appointmentDate}`;
-                return res.send({ackonwledged: false, message});
+                const message = `You have a booking on ${bookingInfo.appointmentDate}`;
+                return res.send({acknowledged: false, message});
             };
 
-            const result = await bookingsCollection.insertOne(bookingData)
-            res.send(result);
+            const bookings = await bookingsCollection.insertOne(bookingInfo);
+            res.send(bookings);
         });
 
         // to get bookings from the database 
         app.get("/bookings", async (req, res) => {
-            const query = {};
+            const userEmail = req.query.email;
+            const query = {patientEmail: userEmail};
             const booknings = await bookingsCollection.find(query).toArray();
             res.send(booknings);
         });

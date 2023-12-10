@@ -40,16 +40,24 @@ const client = new MongoClient(uri, {
 // to verify the token got from the client side 
 const verifyJWT = (req, res, next) => {
 
-    // to get authorization data in headers method 
-    const authHeader = req.headers.authorization;
+    authHeader = req.headers.authorization;
 
-    // to be confirmed about authorization in headers method 
     if(!authHeader){
-        return res.status(401).send("Unothorized access");
-    };
+        return res.status(401).send("Unauthorized access");
+    }
 
-    // to get the exact token
     const token = authHeader.split(' ')[1];
+
+    jwt.verify(token, process.env.ACCESS_TOKEN, function(err, decoded){
+
+        if(err){
+            return res.status(403).send([{message: "Forbidden access from jwt.verify"}]);
+        }
+
+        req.decoded = decoded;
+
+        next();
+    });
 };
 
 async function run() {
@@ -200,8 +208,14 @@ async function run() {
 
         // to get bookings of the already signed in user from the database using email id in MyAppointment Component 
         app.get("/bookings", verifyJWT, async (req, res) => {
-            const userEmail = req.query.email;
-            const query = { patientEmail: userEmail };
+            const email = req.query.email;
+
+            const decodedEmail = req.decoded.userEmail;
+            if(email !== decodedEmail){
+                return res.status(403).send([{message: "Forbidden access"}]);
+            }
+
+            const query = { patientEmail: email };
             const booknings = await bookingsCollection.find(query).toArray();
             res.send(booknings);
         });

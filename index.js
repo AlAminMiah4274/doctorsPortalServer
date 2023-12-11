@@ -269,6 +269,14 @@ async function run() {
             res.send(result);
         });
 
+        // to check the user admin or not 
+        app.get("/users/admin/:id", async(req, res) => {
+            const id = req.params.id;
+            const query = {_id: new ObjectId(id)};
+            const user = await usersCollection.findOne(query);
+            res.send({isAdmin: user?.role === "Admin"});
+        });
+
     } finally {
         // Ensures that the client will close when you finish/error
     }

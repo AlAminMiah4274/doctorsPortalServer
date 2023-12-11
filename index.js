@@ -3,7 +3,7 @@ const cors = require("cors");
 const jwt = require("jsonwebtoken");
 const app = express();
 const port = process.env.PORT || 5000;
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require("dotenv").config(); // to connect to the .env file 
 
 // middleware 
@@ -42,16 +42,16 @@ const verifyJWT = (req, res, next) => {
 
     authHeader = req.headers.authorization;
 
-    if(!authHeader){
+    if (!authHeader) {
         return res.status(401).send("Unauthorized access");
     }
 
     const token = authHeader.split(' ')[1];
 
-    jwt.verify(token, process.env.ACCESS_TOKEN, function(err, decoded){
+    jwt.verify(token, process.env.ACCESS_TOKEN, function (err, decoded) {
 
-        if(err){
-            return res.status(403).send([{message: "Forbidden access from jwt.verify"}]);
+        if (err) {
+            return res.status(403).send([{ message: "Forbidden access" }]);
         }
 
         req.decoded = decoded;
@@ -211,8 +211,8 @@ async function run() {
             const email = req.query.email;
 
             const decodedEmail = req.decoded.userEmail;
-            if(email !== decodedEmail){
-                return res.status(403).send([{message: "Forbidden access"}]);
+            if (email !== decodedEmail) {
+                return res.status(403).send([{ message: "Forbidden access" }]);
             }
 
             const query = { patientEmail: email };
@@ -227,6 +227,13 @@ async function run() {
             res.send(user);
         });
 
+        // to get the all users from database
+        app.get("/users", async (req, res) => {
+            const query = {};
+            const users = await usersCollection.find(query).toArray();
+            res.send(users);
+        });
+
         // to send token to the client side during sign up 
         app.get("/jwt", async (req, res) => {
             const userEmail = req.query.email;
@@ -238,6 +245,28 @@ async function run() {
                 return res.send({ accessToken: token });
             };
             res.status(403).send({ accessToken: "" });
+        });
+
+        // to make a user admin
+        app.put("/users/admin/:id", verifyJWT, async (req, res) => {
+            const decodedEmail = req.decoded.userEmail;
+            const query = {email: decodedEmail};
+            const user = await usersCollection.findOne(query);
+
+            if(user?.role !== "Admin"){
+                return res.status(403).send([{message: "Forbiddedn access from != admin"}]);
+            };
+
+            const id = req.params.id;
+            const filter = {_id: new ObjectId(id)};
+            const options = {upsert: true};
+            const updatedDoc = {
+                $set: {
+                    role: "Admin"
+                }
+            };
+            const result = await usersCollection.updateOne(filter, updatedDoc, options);
+            res.send(result);
         });
 
     } finally {

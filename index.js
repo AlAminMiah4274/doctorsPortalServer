@@ -65,6 +65,7 @@ async function run() {
         const appointmentOptionsCollection = client.db("doctorsPortal").collection("appointmentOptions");
         const bookingsCollection = client.db("doctorsPortal").collection("bookings");
         const usersCollection = client.db("doctorsPortal").collection("users");
+        const doctorsCollection = client.db("doctorsPortal").collection("doctors");
 
         // to get appointment option data from the database 
         app.get("/appointmentOptions", async (req, res) => {
@@ -85,6 +86,13 @@ async function run() {
             });
 
             res.send(options);
+        });
+
+        // to get specific data for showing specialty 
+        app.get("/appointmentSpecialty", async (req, res) => {
+            const query = {};
+            const specialtyInfo = await appointmentOptionsCollection.find(query).project({ name: 1 }).toArray();
+            res.send(specialtyInfo);
         });
 
         // // mongodb aggregation pipeline
@@ -227,8 +235,16 @@ async function run() {
             res.send(user);
         });
 
-        // to get the all users from database
-        app.get("/users", async (req, res) => {
+        // to get the all users in client side (AllUsers) from database
+        app.get("/users", verifyJWT, async (req, res) => {
+            const decodedEmail = req.decoded.userEmail;
+            const decodedEmailQuery = { email: decodedEmail };
+            const verifiedUser = await usersCollection.findOne(decodedEmailQuery);
+
+            if (verifiedUser.role !== "Admin") {
+                return res.status(403).send([]);
+            }
+
             const query = {};
             const users = await usersCollection.find(query).toArray();
             res.send(users);
@@ -250,16 +266,16 @@ async function run() {
         // to make a user admin
         app.put("/users/admin/:id", verifyJWT, async (req, res) => {
             const decodedEmail = req.decoded.userEmail;
-            const query = {email: decodedEmail};
+            const query = { email: decodedEmail };
             const user = await usersCollection.findOne(query);
 
-            if(user?.role !== "Admin"){
-                return res.status(403).send([{message: "Forbiddedn access from != admin"}]);
+            if (user?.role !== "Admin") {
+                return res.status(403).send([{ message: "Forbiddedn access from != admin" }]);
             };
 
             const id = req.params.id;
-            const filter = {_id: new ObjectId(id)};
-            const options = {upsert: true};
+            const filter = { _id: new ObjectId(id) };
+            const options = { upsert: true };
             const updatedDoc = {
                 $set: {
                     role: "Admin"
@@ -270,11 +286,34 @@ async function run() {
         });
 
         // to check the user admin or not 
-        app.get("/users/admin/:email", async(req, res) => {
+        app.get("/users/admin/:email", async (req, res) => {
             const email = req.params.email;
-            const query = {email};
+            const query = { email };
             const user = await usersCollection.findOne(query);
-            res.send({isAdmin: user?.role === "Admin"});
+            res.send({ isAdmin: user?.role === "Admin" });
+        });
+
+        // to send the doctors data to the database from AddDoctors 
+        app.post("/doctors", async (req, res) => {
+            const doctorInfo = req.body;
+            console.log(doctorInfo);
+            const doctor = await doctorsCollection.insertOne(doctorInfo);
+            res.send(doctor);
+        });
+
+        // to load all doctors data from database in client side (ManageDoctor)
+        app.get("/doctors", async (req, res) => {
+            const query = {};
+            const doctors = await doctorsCollection.find(query).toArray();
+            res.send(doctors);
+        });
+
+        // to delete the invidula doctor from database 
+        app.delete("/doctors/:id", async (req, res) => {
+            const id = req.params.id;
+            const query = {_id: new ObjectId(id)};
+            const deletedDoctor = await doctorsCollection.deleteOne(query);
+            res.send(deletedDoctor);
         });
 
     } finally {

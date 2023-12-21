@@ -80,6 +80,8 @@ async function run() {
             next();
         };
 
+        // ***************** APPOINTMENT OPTIONS ********************
+
         // to get appointment option data from the database 
         app.get("/appointmentOptions", async (req, res) => {
             const optionsQuery = {};
@@ -106,6 +108,19 @@ async function run() {
             const query = {};
             const specialtyInfo = await appointmentOptionsCollection.find(query).project({ name: 1 }).toArray();
             res.send(specialtyInfo);
+        });
+
+        // to add extra field in appointment options api 
+        app.get("/addPrice", async (req, res) => {
+            const filter = {};
+            const options = {upsert: true};
+            const updatedDoc = {
+                $set: {
+                    price: 99
+                }
+            }
+            const price = await appointmentOptionsCollection.updateMany(filter, updatedDoc, options);
+            res.send(price);
         });
 
         // // mongodb aggregation pipeline
@@ -183,6 +198,7 @@ async function run() {
                 {
                     $project: {
                         name: 1,
+                        price: 1,
                         slots: 1,
                         booked: {
                             $map: {
@@ -196,6 +212,7 @@ async function run() {
                 {
                     $project: {
                         name: 1,
+                        price: 1,
                         slots: {
                             $setDifference: ["$slots", "$booked"]
                         }
@@ -204,6 +221,8 @@ async function run() {
             ]).toArray();
             res.send(options);
         });
+
+        // **************** BOOKINGS ******************
 
         // to send booking data to the databse 
         app.post("/bookings", async (req, res) => {
@@ -241,6 +260,8 @@ async function run() {
             res.send(booknings);
         });
 
+        // ***************** USERS ********************
+
         // to save new user info in the database 
         app.post("/users", async (req, res) => {
             const userInfo = req.body;
@@ -268,6 +289,8 @@ async function run() {
             res.status(403).send({ accessToken: "" });
         });
 
+        // ********************* ADMIN ************************
+
         // to make a user admin
         app.put("/users/admin/:id", verifyJWT, verifyAdmin, async (req, res) => {
             const id = req.params.id;
@@ -289,6 +312,8 @@ async function run() {
             const user = await usersCollection.findOne(query);
             res.send({ isAdmin: user?.role === "Admin" });
         });
+
+        // ******************** DOCTORS ********************
 
         // to send the doctors data to the database from AddDoctors 
         app.post("/doctors", async (req, res) => {
@@ -322,3 +347,11 @@ run().catch(err => console.error(err));
 app.listen(port, () => {
     console.log(`Doctors Portal server is running on ${port}`);
 });
+
+
+/*
+# data changing or updating systems: 
+1. delete the data form server or database - dangerous system
+2. write a querie or script 
+3.
+*/

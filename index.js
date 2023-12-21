@@ -260,6 +260,14 @@ async function run() {
             res.send(booknings);
         });
 
+        // to get an individual booking from database in client side (Payment) 
+        app.get("/bookings/:id", async (req, res) => {
+            const id = req.params.id;
+            const query = {_id: new ObjectId(id)};
+            const result = await bookingsCollection.findOne(query);
+            res.send(result);
+        });
+
         // ***************** USERS ********************
 
         // to save new user info in the database 

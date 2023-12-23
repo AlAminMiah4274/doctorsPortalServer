@@ -5,6 +5,7 @@ const app = express();
 const port = process.env.PORT || 5000;
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require("dotenv").config(); // to connect to the .env file 
+const stripe = require('stripe')(process.env.STRIPE_SECERET_KEY); // to access the stripe secret key from .env file
 
 // middleware 
 app.use(cors());
@@ -70,11 +71,11 @@ async function run() {
         // to verify the user admin or not after verifying verifyJWT
         const verifyAdmin = async (req, res, next) => {
             const decodedEmail = req.decoded.userEmail;
-            const query = {email: decodedEmail};
+            const query = { email: decodedEmail };
             const user = await usersCollection.findOne(query);
 
-            if(user?.role !== "Admin"){
-                return res.status(403).send([{message: "You are not an admin. Be admin first"}]);
+            if (user?.role !== "Admin") {
+                return res.status(403).send([{ message: "You are not an admin. Be admin first" }]);
             }
 
             next();
@@ -113,7 +114,7 @@ async function run() {
         // to add extra field in appointment options api 
         app.get("/addPrice", async (req, res) => {
             const filter = {};
-            const options = {upsert: true};
+            const options = { upsert: true };
             const updatedDoc = {
                 $set: {
                     price: 99
@@ -222,6 +223,25 @@ async function run() {
             res.send(options);
         });
 
+        // to get card info for payment 
+        app.post("/create-payment-intents", async (req, res) => {
+            const booking = req.body;
+            const price = booking.price;
+            const amount = price * 100;
+
+            const paymentIntent = await stripe.paymentIntents.create({
+                currency: "usd",
+                amount: amount,
+                "payment_method_types": [
+                    "card"
+                ]
+            });
+
+            res.send({
+                clientSecret: paymentIntent.client_secret
+            });
+        });
+
         // **************** BOOKINGS ******************
 
         // to send booking data to the databse 
@@ -263,7 +283,7 @@ async function run() {
         // to get an individual booking from database in client side (Payment) 
         app.get("/bookings/:id", async (req, res) => {
             const id = req.params.id;
-            const query = {_id: new ObjectId(id)};
+            const query = { _id: new ObjectId(id) };
             const result = await bookingsCollection.findOne(query);
             res.send(result);
         });
@@ -340,7 +360,7 @@ async function run() {
         // to delete the invidula doctor from database 
         app.delete("/doctors/:id", verifyJWT, verifyAdmin, async (req, res) => {
             const id = req.params.id;
-            const query = {_id: new ObjectId(id)};
+            const query = { _id: new ObjectId(id) };
             const deletedDoctor = await doctorsCollection.deleteOne(query);
             res.send(deletedDoctor);
         });

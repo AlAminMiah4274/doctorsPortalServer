@@ -52,7 +52,7 @@ const verifyJWT = (req, res, next) => {
     jwt.verify(token, process.env.ACCESS_TOKEN, function (err, decoded) {
 
         if (err) {
-            return res.status(403).send([{ message: "Forbidden access" }]);
+            return res.status(403).send([{message: "Forbidden access"}]);
         }
 
         req.decoded = decoded;
@@ -254,7 +254,7 @@ async function run() {
 
             const decodedEmail = req.decoded.userEmail;
             if (email !== decodedEmail) {
-                return res.status(403).send([{ message: "Forbidden access" }]);
+                return res.status(403).send([{message: "Forbidden access: please login again"}]);
             }
 
             const query = { patientEmail: email };
@@ -367,9 +367,19 @@ async function run() {
             });
         });
 
-        // to save payment in database 
+        // to save payment info in database and add some fields in bookings Collection 
         app.post("/payments", async (req, res) => {
             const payment = req.body;
+            const id = payment.bookingId;
+            const filter = {_id: new ObjectId(id)};
+            const updatedDoc = {
+                $set: {
+                    paid: true,
+                    transactionId: payment.transactionId
+                }
+            };
+            const updatedResult = await bookingsCollection.updateOne(filter, updatedDoc);
+
             const result = await paymentsCollection.insertOne(payment);
             res.send(result);
         });

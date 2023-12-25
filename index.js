@@ -67,6 +67,7 @@ async function run() {
         const bookingsCollection = client.db("doctorsPortal").collection("bookings");
         const usersCollection = client.db("doctorsPortal").collection("users");
         const doctorsCollection = client.db("doctorsPortal").collection("doctors");
+        const paymentsCollection = client.db("doctorsPortal").collection("payments");
 
         // to verify the user admin or not after verifying verifyJWT
         const verifyAdmin = async (req, res, next) => {
@@ -112,17 +113,17 @@ async function run() {
         });
 
         // to add extra field in appointment options api 
-        app.get("/addPrice", async (req, res) => {
-            const filter = {};
-            const options = { upsert: true };
-            const updatedDoc = {
-                $set: {
-                    price: 99
-                }
-            }
-            const price = await appointmentOptionsCollection.updateMany(filter, updatedDoc, options);
-            res.send(price);
-        });
+        // app.get("/addPrice", async (req, res) => {
+        //     const filter = {};
+        //     const options = { upsert: true };
+        //     const updatedDoc = {
+        //         $set: {
+        //             price: 99
+        //         }
+        //     }
+        //     const price = await appointmentOptionsCollection.updateMany(filter, updatedDoc, options);
+        //     res.send(price);
+        // });
 
         // // mongodb aggregation pipeline
         // app.get("/v2/appointmentOptions", async (req, res) => {
@@ -221,25 +222,6 @@ async function run() {
                 }
             ]).toArray();
             res.send(options);
-        });
-
-        // to get card info for payment 
-        app.post("/create-payment-intents", async (req, res) => {
-            const booking = req.body;
-            const price = booking.price;
-            const amount = price * 100;
-
-            const paymentIntent = await stripe.paymentIntents.create({
-                currency: "usd",
-                amount: amount,
-                "payment_method_types": [
-                    "card"
-                ]
-            });
-
-            res.send({
-                clientSecret: paymentIntent.client_secret
-            });
         });
 
         // **************** BOOKINGS ******************
@@ -363,6 +345,33 @@ async function run() {
             const query = { _id: new ObjectId(id) };
             const deletedDoctor = await doctorsCollection.deleteOne(query);
             res.send(deletedDoctor);
+        });
+
+        // *************** PAYMENT *****************
+        // to get card info for payment 
+        app.post("/create-payment-intents", async (req, res) => {
+            const booking = req.body;
+            const price = booking.price;
+            const amount = price * 100;
+
+            const paymentIntent = await stripe.paymentIntents.create({
+                currency: "usd",
+                amount: amount,
+                "payment_method_types": [
+                    "card"
+                ]
+            });
+
+            res.send({
+                clientSecret: paymentIntent.client_secret
+            });
+        });
+
+        // to save payment in database 
+        app.post("/payments", async (req, res) => {
+            const payment = req.body;
+            const result = await paymentsCollection.insertOne(payment);
+            res.send(result);
         });
 
     } finally {

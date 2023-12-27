@@ -6,10 +6,17 @@ const port = process.env.PORT || 5000;
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require("dotenv").config(); // to connect to the .env file 
 const stripe = require('stripe')(process.env.STRIPE_SECERET_KEY); // to access the stripe secret key from .env file
+const { createProxyMiddleware } = require('http-proxy-middleware');
 
 // middleware 
 app.use(cors());
 app.use(express.json());
+
+app.use("/cors", createProxyMiddleware({
+    target: 'https://doctors-portal-76efc.web.app',
+    changeOrigin: true
+}));
+
 
 app.get("/", (req, res) => {
     res.send("Doctors Portal server is running");
@@ -52,7 +59,7 @@ const verifyJWT = (req, res, next) => {
     jwt.verify(token, process.env.ACCESS_TOKEN, function (err, decoded) {
 
         if (err) {
-            return res.status(403).send([{message: "Forbidden access"}]);
+            return res.status(403).send([{ message: "Forbidden access" }]);
         }
 
         req.decoded = decoded;
@@ -254,7 +261,7 @@ async function run() {
 
             const decodedEmail = req.decoded.userEmail;
             if (email !== decodedEmail) {
-                return res.status(403).send([{message: "Forbidden access: please login again"}]);
+                return res.status(403).send([{ message: "Forbidden access: please login again" }]);
             }
 
             const query = { patientEmail: email };
@@ -371,7 +378,7 @@ async function run() {
         app.post("/payments", async (req, res) => {
             const payment = req.body;
             const id = payment.bookingId;
-            const filter = {_id: new ObjectId(id)};
+            const filter = { _id: new ObjectId(id) };
             const updatedDoc = {
                 $set: {
                     paid: true,

@@ -5,17 +5,11 @@ const app = express();
 const port = process.env.PORT || 5000;
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require("dotenv").config(); // to connect to the .env file 
-const stripe = require('stripe')(process.env.STRIPE_SECERET_KEY); // to access the stripe secret key from .env file
-const { createProxyMiddleware } = require('http-proxy-middleware');
+const stripe = require('stripe')(process.env.STRIPE_SECERET_KEY); // to access the stripe secret key from .env file 
 
 // middleware 
 app.use(cors());
 app.use(express.json());
-
-app.use("/cors", createProxyMiddleware({
-    target: 'https://doctors-portal-76efc.web.app',
-    changeOrigin: true
-}));
 
 
 app.get("/", (req, res) => {
